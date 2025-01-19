@@ -1,0 +1,5 @@
+data/
+
+config/__pycache__/
+
+src/__pycache__/
