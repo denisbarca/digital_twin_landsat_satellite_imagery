@@ -3,7 +3,7 @@ from datetime import datetime
 from config.config import Config
 from src import vector_mask
 from src.ee_utils import EEUtils, get_landsat_image_processed, initialize_ee
-from src.lst_calculator import compute_toa, compute_toa_manual
+from src.lst_calculator import compute_toa_manual
 from src.vector_mask import get_vector_mask_coords
 from src.visualization import set_new_map
 
@@ -22,8 +22,6 @@ def main():
         Config.EXPORT_SCALE
     )
     image = get_landsat_image_processed(image_config)
-    # radiance_mult_band_10 = image.getInfo()['properties']['RADIANCE_MULT_BAND_10']
-    # print('RADIANCE', radiance_mult_band_10)
     map = set_new_map(
         image=image, 
         viz_params_type='natural', 
