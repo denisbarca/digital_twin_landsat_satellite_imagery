@@ -72,7 +72,7 @@ VIZ_PARAMS = {
         'palette': ['blue', 'white', 'green']
     },
     'lst': {
-        'bands': ['ST_B10'],
+        'bands': ['B10'],
         'min': 273.15,
         'max': 313.15,
         'palette': ['blue', 'yellow', 'red']

@@ -40,7 +40,7 @@ def compute_toa_manual(image):
     toa_raw = image.expression(
         '(MR * DNs + AR)', {
             'MR': ee.Number(radiance_mult),
-            'DNs': image.select('B10'),
+            'DNs': image.select('B11'),
             'AR': ee.Number(radiance_add)
     })
     
@@ -50,10 +50,9 @@ def compute_toa_manual(image):
             'TOA': toa_raw,
             'SE': ee.Number(solar_angle),
             'pi': ee.Number(np.pi)
-    }).rename('TOA_B10')
+    }).rename('TOA')
 
-    image = add_band_to_image(image, toa_corrected)
-    return image
+    return image.addBands(toa_corrected)
 
 #SECOND
 def compute_brightness_temperature(image: ee.Image) -> ee.Image:
@@ -65,17 +64,18 @@ def compute_brightness_temperature(image: ee.Image) -> ee.Image:
     k1 = image.get('K1_CONSTANT_BAND_10').getInfo()
     k2 = image.get('K2_CONSTANT_BAND_10').getInfo()
     
+    # image = compute_toa_manual(image)
     # Calculate BT
     bt = image.expression(
-        '(K2 / (ln(K1/L) + 1)) - 273.15', {
+        '(K2 / (log(K1/L) + 1)) - 273.15', {
             'K1': k1,
             'K2': k2,
-            'ln': ee.Number(math.e)  # natural logarithm base
+            'log': ee.Number(math.e), # natural logarithm base
+            'L': image.select('TOA')
         }
     ).rename('BT')
     
-    image = add_band_to_image(image, bt)
-    return image
+    return image.addBands(bt)
 
 # THIRD
 def compute_ndvi(image: ee.Image) -> ee.Image:
@@ -85,12 +85,11 @@ def compute_ndvi(image: ee.Image) -> ee.Image:
     """
     ndvi = image.expression(
         '(NIR - RED)/(NIR + RED)', {
-            'NIR': image.select('SR_B5'),
-            'RED': image.select('SR_B4')
+            'NIR': image.select('B5'),
+            'RED': image.select('B4')
         }
     ).rename('NDVI')
-    image = add_band_to_image(image, ndvi)
-    return image
+    return image.addBands(ndvi)
 
 # FOURTH
 def compute_proportion_vegetation(image: ee.Image):
@@ -99,14 +98,14 @@ def compute_proportion_vegetation(image: ee.Image):
     Pv = ((NDVI – NDVImin) / (NDVImax – NDVImin))²
     """
     # Get statistics from NDVI band
-    image = compute_ndvi(image)
+    # image = compute_ndvi(image)
     ndvi_stats = image.select('NDVI').reduceRegion(
         reducer=ee.Reducer.minMax(),
         geometry=image.geometry(),
         scale=Config.EXPORT_SCALE,
         maxPixels=1e9
     )
-    
+    print('pv', image.bandNames().getInfo())
     ndvi_min = ee.Number(ndvi_stats.get('NDVI_min'))
     ndvi_max = ee.Number(ndvi_stats.get('NDVI_max'))
     
@@ -118,12 +117,25 @@ def compute_proportion_vegetation(image: ee.Image):
             'NDVImax': ndvi_max
         }
     ).rename('PV')
-    image = add_band_to_image(image, pv)
-    return image
+    print(type(pv))
+    return image.addBands(pv)
 
 # FIFTH
-def compute_emissivity(image: ee.Image):
-    return Config.LSE_COEFFICIENT * compute_proportion_vegetation(image) + Config.LSE_CONSTANT
+def compute_emissivity(image: ee.Image) -> ee.Image:
+    """
+    Calculate surface emissivity.
+    """
+    pv = image.select('PV')
+    print('emiss', image.bandNames().getInfo(), type(pv))
+    emissivity = image.expression(
+        'LSE_COEFFICIENT * PV + LSE_CONSTANT', {
+            'LSE_COEFFICIENT': Config.LSE_COEFFICIENT,
+            'LSE_CONSTANT': Config.LSE_CONSTANT,
+            'PV': pv
+        }
+    ).rename('EMISSIVITY')
+    
+    return image.addBands(emissivity)
 
 # FINAL
 def compute_lst(image: ee.Image) -> ee.Image:
@@ -132,15 +144,51 @@ def compute_lst(image: ee.Image) -> ee.Image:
     LST = BT / (1 + (λ * BT / ρ) * ln(ε))
     """     
     # Calculate LST
+    image = compute_toa_manual(image)
+    print('TOA:', image.select('TOA').getInfo())
+    with open('data/output/toa_info.txt', 'w') as f:
+        f.write(f"TOA: {image.select('TOA').getInfo()}\n")
+    
+    image = compute_brightness_temperature(image)
+    print('Brightness Temperature:', image.select('BT').getInfo())
+    with open('data/output/bt_info.txt', 'w') as f:
+        f.write(f"Brightness Temperature: {image.select('BT').getInfo()}\n")
+    
+    image = compute_ndvi(image)
+    print('NDVI:', image.select('NDVI').getInfo())
+    with open('data/output/ndvi_info.txt', 'w') as f:
+        f.write(f"NDVI: {image.select('NDVI').getInfo()}\n")
+    
+    image = compute_proportion_vegetation(image)
+    print('Proportion Vegetation:', image.select('PV').getInfo())
+    with open('data/output/pv_info.txt', 'w') as f:
+        f.write(f"PV: {image.select('PV').getInfo()}\n")
+    
+    print('BEFORE Emissivity:', image.bandNames().getInfo())
+    image = compute_emissivity(image)
+    print('Emissivity:', image.select('EMISSIVITY').getInfo())
+    with open('data/output/emissivity_info.txt', 'w') as f:
+        f.write(f"Emissivity: {image.select('EMISSIVITY').getInfo()}\n")
+
     lst = image.expression(
-        'BT / (1 + (wavelength * BT / rho) * ln(E))', {
-            'BT': compute_brightness_temperature(image),
+        'BT / (1 + (wavelength * BT / rho) * log(E))', {
+            'BT': image.select('BT'),
             'wavelength': Config.WAVELENGTH,
             'rho': Config.CONSTANT_PLANCK,
-            'E': compute_emissivity(image.select('PV')),
-            'ln': ee.Number(math.E)
+            'E': image.select('EMISSIVITY'),
+            'log': ee.Number(math.e)
         }
     ).rename('LST')
     
     image = add_band_to_image(image, lst)
+    # Inspect DN values for the specific LST band
+    lst_values = image.select('LST').reduceRegion(
+        reducer=ee.Reducer.toList(),
+        geometry=image.geometry(),
+        scale=Config.EXPORT_SCALE,
+        maxPixels=1e9
+    ).get('LST').getInfo()
+    with open('data/output/lst_info.txt', 'w') as f:
+        f.write(f"LST: {image.select('LST').getInfo()}\n")
+    print("LST DN VALUES:", lst_values)
     return image

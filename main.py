@@ -3,11 +3,13 @@ from datetime import datetime
 from config.config import Config
 from src import vector_mask
 from src.ee_utils import EEUtils, get_landsat_image_processed, initialize_ee
-from src.lst_calculator import compute_toa_manual
+from src.lst_calculator import compute_lst, compute_toa_manual
 from src.vector_mask import get_vector_mask_coords
-from src.visualization import set_new_map
+from src.visualization import init_map, set_new_map
+import leafmap.leafmap as leafmap
 
 def main():
+    # m = init_map()
     # Initialize Earth Engine
     initialize_ee()
     
@@ -28,14 +30,13 @@ def main():
         name='Landsat 9 Ciampino Natural Color', 
         file_path='data/output/landsat_natural_image_map.html'
     )
-    image = compute_toa_manual(image)
-    map = set_new_map(
-        map=map,
-        image=image, 
-        viz_params_type='toa', 
-        name='Landsat 9 Ciampino TOA Color', 
-        file_path='data/output/landsat_TOA.html'
+    image_lst = compute_lst(image)
+    map_lst = set_new_map(
+        image=image_lst, 
+        viz_params_type='lst', 
+        name='Landsat 9 Ciampino LST Color', 
+        file_path='data/output/landsat_LST.html'
     )
-    
+    # map.save('data/output/map_lst.html')
 if __name__ == "__main__":
     main()
