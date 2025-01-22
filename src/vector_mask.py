@@ -73,5 +73,5 @@ def get_vector_mask_centroid():
     :return: The centroid coordinates.
     """
     gdf = get_vector_mask()
-    centroid = gdf.geometry.centroid
+    centroid = gdf.geometry.to_crs(Config.TARGET_CRS).centroid
     return centroid

@@ -17,10 +17,11 @@ class EEUtils:
 def initialize_ee():
     """Initialize Earth Engine."""
     try:
-        ee.Authenticate()
         ee.Initialize()
+        print("Google Earth Engine has been initialized successfully")
     except Exception as e:
-        print("Authentication failed:", str(e))
+            ee.Authenticate()
+            ee.Initialize()
         
 # Processing image
 def get_landsat_image_processed(self: EEUtils) -> ee.Image:

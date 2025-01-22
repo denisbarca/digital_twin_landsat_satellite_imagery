@@ -4,4 +4,3 @@ numpy
 matplotlib
 pytest
 geopandas
-folium

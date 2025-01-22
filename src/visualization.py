@@ -59,12 +59,6 @@ VIZ_PARAMS = {
         'format': 'png',     # Better quality format
         'quantization': 0
     },
-    'false_color': {
-        'bands': ['SR_B5', 'SR_B4', 'SR_B3'],
-        'min': 0,
-        'max': 0.4,
-        'gamma': 1.4
-    },
     'ndvi': {
         'bands': ['NDVI'],
         'min': -1,
@@ -72,9 +66,9 @@ VIZ_PARAMS = {
         'palette': ['blue', 'white', 'green']
     },
     'lst': {
-        'bands': ['B10'],
-        'min': 273.15,
-        'max': 313.15,
+        'bands': ['LST'],
+        'min': 20,
+        'max': 40,
         'palette': ['blue', 'yellow', 'red']
     },
     'toa': {

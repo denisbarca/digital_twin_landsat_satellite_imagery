@@ -2,6 +2,8 @@
 class Config:
     # Earth Engine parameters
     IMAGE_COLLECTION = 'LANDSAT/LC09/C02/T1_TOA'
+    START_DATE = '2024-08-01'
+    END_DATE = '2024-08-31'
     CLOUD_COVER_THRESHOLD = 10
     EXPORT_SCALE = 10
     TARGET_CRS = 'EPSG:4326'
@@ -9,8 +11,8 @@ class Config:
     # LST calculation parameters
     LSE_COEFFICIENT = 0.004
     LSE_CONSTANT = 0.986
-    WAVELENGTH = 0.00115
-    CONSTANT_PLANCK = 1.4388        
+    WAVELENGTH = 10.8
+    CONSTANT_PLANCK = 14388     
     
     # Visualization parameters
     MAP_ZOOM_START = 13
